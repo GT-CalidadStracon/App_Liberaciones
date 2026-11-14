@@ -279,3 +279,125 @@ test("Anteriores: editar (✎) desde el listado vuelve al listado y las liberaci
     assert.strictEqual(nLibs(app), 0);
   } finally { app.cerrar(); }
 });
+
+/* ── botones Atrás / Adelante entre la cabecera y el contenido ── */
+const navAtras = (app) => app.document.getElementById("navAtras");
+const navAdelante = (app) => app.document.getElementById("navAdelante");
+
+test("Atrás/Adelante: van entre la cabecera y la tarjeta, en ese orden, y al arrancar están apagados", async () => {
+  const app = await cargarApp({ servidor: servidorConDatos(), vista: "inicio" });
+  try {
+    const hdr = app.document.querySelector("#app .hdr");
+    const fila = hdr.nextElementSibling;
+    assert.ok(fila && fila.classList.contains("navrow"), "la fila va justo después de la cabecera");
+    assert.ok(fila.nextElementSibling.classList.contains("card"), "y antes de la tarjeta de contenido");
+    assert.deepStrictEqual(Array.from(fila.children).map((b) => b.textContent), ["‹ Atrás", "Adelante ›"]);
+    assert.ok(navAtras(app).disabled && navAdelante(app).disabled, "sin historial no hay a dónde ir");
+    assert.ok(navAtras(app).getAttribute("aria-label") && navAdelante(app).getAttribute("aria-label"));
+    assert.deepStrictEqual(app.errores.map(String), []);
+  } finally { app.cerrar(); }
+});
+
+test("Atrás/Adelante: Inicio → Registro → Atrás vuelve a Inicio y Adelante regresa al Registro con lo escrito", async () => {
+  const app = await cargarApp({ servidor: servidorConDatos(), vista: "inicio" });
+  try {
+    await app.clickTexto("＋ Registrar liberación");
+    assert.strictEqual(app.get("state.view"), "main");
+    assert.ok(!navAtras(app).disabled && navAdelante(app).disabled);
+    await app.elegirFrente("pad2f");
+    const frente = app.get("state.estructura");
+    await app.click(navAtras(app));
+    assert.strictEqual(app.get("state.view"), "inicio");
+    assert.ok(navAtras(app).disabled && !navAdelante(app).disabled, "ahora se puede avanzar y ya no retroceder");
+    await app.click(navAdelante(app));
+    assert.strictEqual(app.get("state.view"), "main");
+    assert.strictEqual(app.get("state.estructura"), frente, "el borrador del formulario se conserva");
+    assert.ok(navAdelante(app).disabled && !navAtras(app).disabled);
+  } finally { app.cerrar(); }
+});
+
+test("Atrás/Adelante: una acción nueva borra lo que había por delante, y Atrás recorre varias pantallas en orden", async () => {
+  const app = await cargarApp({ servidor: servidorConDatos(), vista: "inicio" });
+  try {
+    await abrirAnteriores(app);                         // Inicio → Anteriores
+    await app.run("irInicio()"); await app.vaciar();    // → Inicio (otra vez, desde el menú)
+    await app.clickTexto("＋ Registrar liberación");    // → Registro
+    assert.deepStrictEqual(app.json("nav.atras"), ["inicio", "hoy", "inicio"]);
+    await app.click(navAtras(app));
+    assert.strictEqual(app.get("state.view"), "inicio");
+    await app.click(navAtras(app));
+    assert.strictEqual(app.get("state.view"), "hoy", "retrocede por donde se vino");
+    assert.ok(!navAdelante(app).disabled);
+    await app.click(navAdelante(app));
+    assert.strictEqual(app.get("state.view"), "inicio");
+    await app.clickTexto("Ver liberaciones anteriores");   // acción nueva
+    assert.ok(navAdelante(app).disabled, "al hacer algo nuevo se pierde lo que había por delante");
+  } finally { app.cerrar(); }
+});
+
+test("Atrás/Adelante: volver a Anteriores conserva el rango y el filtro de texto que se habían puesto", async () => {
+  const app = await cargarApp({ servidor: servidorConDatos(), vista: "inicio" });
+  try {
+    await abrirAnteriores(app);
+    await cambiarFecha(app, "fDesde", "2026-11-12");
+    await app.escribir(app.document.getElementById("fTexto"), "zanja");
+    await app.run("irInicio()"); await app.vaciar();
+    await app.click(navAtras(app));
+    assert.strictEqual(app.get("state.view"), "hoy");
+    assert.strictEqual(app.document.getElementById("fDesde").value, "2026-11-12", "no vuelve a los 7 días de siempre");
+    assert.strictEqual(app.get("dia.q"), "zanja");
+  } finally { app.cerrar(); }
+});
+
+test("Atrás/Adelante: tras registrar una liberación, Atrás no reabre el formulario ya enviado", async () => {
+  const app = await cargarApp({ servidor: servidorConDatos(), vista: "inicio" });
+  try {
+    await abrirAnteriores(app);
+    await app.run("state.view = 'main'; render();"); await app.vaciar();   // p. ej. «copiar» desde el listado
+    app.run("terminarRegistro('Registrada como L-0001.','ok')"); await app.vaciar();
+    assert.strictEqual(app.get("state.view"), "inicio");
+    assert.ok(!app.json("nav.atras").includes("main"), "el formulario ya enviado no queda en el historial");
+  } finally { app.cerrar(); }
+});
+
+test("Atrás: saliendo de editar una liberación pregunta antes; si se rechaza se sigue editando y si se acepta se descarta", async () => {
+  for (const confirmar of [false, true]) {
+    const app = await cargarApp({ servidor: crearServidorMock(), confirmar });
+    try {
+      await app.elegirFrente("pad2f"); await app.elegirTipo("FUNDACION");
+      app.run("prefs.supervisor = ''; resetForm(); render();");
+      await llenarFormulario(app, { rng: crearRng(5), revisiones: 0 });
+      await app.subir();
+      await app.click(app.document.querySelector("button.edit"));
+      assert.ok(app.get("state.editando"), "se abrió la edición");
+      assert.ok(!navAtras(app).disabled);
+      await app.click(navAtras(app));
+      assert.ok(app.confirmaciones.some((m) => /editando una liberación/.test(m)), "pregunta antes de salir");
+      if (confirmar) {
+        assert.strictEqual(app.get("state.editando"), null, "se descarta la edición");
+        assert.strictEqual(app.get("state.view"), "inicio");
+        assert.ok(navAdelante(app).disabled, "una edición descartada no se puede reabrir con Adelante");
+      } else {
+        assert.ok(app.get("state.editando"), "sigue editando");
+        assert.strictEqual(app.get("state.view"), "main");
+      }
+    } finally { app.cerrar(); }
+  }
+});
+
+test("Atrás/Adelante: no aparecen en la pantalla de ingreso y cerrar sesión borra el historial", async () => {
+  const sin = await cargarApp({ servidor: crearServidorMock(), usuario: null });
+  try {
+    assert.strictEqual(sin.get("necesitaAcceso()"), true, "sin sesión se pide ingresar");
+    assert.ok(sin.botones("Ya tengo cuenta").length === 1, "es la pantalla de ingreso");
+    assert.ok(!sin.document.getElementById("navAtras") && !sin.document.getElementById("navAdelante"), "sin sesión no hay navegación");
+  } finally { sin.cerrar(); }
+  const app = await cargarApp({ servidor: crearServidorMock(), vista: "inicio" });
+  try {
+    await app.clickTexto("＋ Registrar liberación");
+    assert.ok(app.json("nav.atras").length > 0);
+    app.run("cerrarSesion()"); await app.vaciar();
+    assert.deepStrictEqual(app.json("nav.atras"), [], "otra persona no hereda el historial");
+    assert.deepStrictEqual(app.json("nav.adelante"), []);
+  } finally { app.cerrar(); }
+});

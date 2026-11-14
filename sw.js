@@ -1,7 +1,7 @@
 /* Service worker del Generador de Liberaciones.
    Red primero (para recibir actualizaciones) y caché como respaldo sin señal.
    Si cambias el nombre del index.html, actualiza también ARCHIVOS y el manifest. */
-var CACHE = "liberaciones-v28";
+var CACHE = "liberaciones-v29";
 var ARCHIVOS = ["./index.html","./manifest.webmanifest","./icon-192.png","./icon-512.png","./logo-izq.jpg","./logo-der.png","./exceljs.min.js","./turno.js","./servidor.js"];
 
 /* los logos son opcionales: si faltan en el servidor, la app se instala igual (sin logo) */

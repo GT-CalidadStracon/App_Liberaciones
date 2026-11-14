@@ -30,6 +30,11 @@ Pensado para alguien del área de Calidad, sin conocimientos de programación. C
   - **⬇ Exportar a Excel:** baja un listado `.xlsx` con **lo que se ve** (rango + filtro de texto), una fila por liberación: ID, fecha del día de trabajo, hora, turno, estructura, tipo, material, capa, espesor, área, cota, progresiva, procedencia, ensayo, protocolo, supervisor, texto completo, enlace a la foto y quién la registró. No incluye las fotos. Archivo: `Liberaciones_aaaa-mm-dd_a_aaaa-mm-dd.xlsx` (`_filtro` si hay texto).
   - Si el rango es **un solo día** (mismas fechas en Desde y Hasta) aparecen además los botones del **reporte del día** (completo, solo día, solo noche), como siempre.
   - El servidor devuelve como máximo 1000 liberaciones por consulta (las más recientes); si hay más, la app avisa y hay que acortar el rango.
+- **Botones ‹ Atrás / Adelante › (app 2.4):** van entre la cabecera y el contenido, en todas las pantallas menos la de ingreso. Recorren las pantallas por las que se pasó (Inicio, Registro, Anteriores, Ajustes, Mi perfil, Usuarios); no deshacen cambios dentro de un formulario.
+  - Volver a Anteriores conserva el rango de fechas y el filtro de texto; volver al Registro conserva lo escrito.
+  - Si se sale de **Ajustes con cambios sin guardar** o de **editar una liberación**, la app pregunta antes de descartar. Una edición descartada no se puede reabrir con Adelante.
+  - Un registro ya enviado no queda en el historial (Atrás no reabre un formulario que ya se subió). Al cerrar sesión el historial se borra.
+  - El historial vive solo en memoria: se reinicia al cerrar y abrir la app. Todavía **no** responde al botón/gesto «atrás» del teléfono (el del sistema sigue cerrando la app).
 - **Servidor 2.3.0:** agrega la acción `listRango` (rango de fechas). Hay que **pegar el `Code.gs` nuevo y publicar una nueva versión del despliegue**; con el servidor anterior, Liberaciones anteriores avisa que hay que actualizarlo (lo demás sigue funcionando).
 
 ## 3b. Personas con acceso — todo se hace desde la app

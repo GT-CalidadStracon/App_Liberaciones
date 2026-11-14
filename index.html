@@ -207,6 +207,11 @@
         background:var(--cian-suave);border-radius:99px;padding:5px 12px 5px 10px}
   .hdr-bar{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .hdr-bar .chip{min-width:0}
+  /* botones Atrás / Adelante entre la cabecera y la tarjeta */
+  .navrow{display:flex;justify-content:space-between;gap:10px;margin:-4px 0 12px}
+  .navbtn{background:var(--cian-suave);border:1px solid #b4dbf3;color:var(--navy);border-radius:10px;padding:8px 16px;min-height:44px;
+          font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .navbtn:disabled{opacity:.4;cursor:default}
   .menu-wrap{position:relative;margin-left:auto;flex:none}
   .menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:210px;background:#fff;border:1px solid var(--borde);
         border-radius:10px;padding:6px;box-shadow:0 8px 24px rgba(18,39,90,.22);display:flex;flex-direction:column;gap:2px}
@@ -751,7 +756,7 @@ function refrescarSesion(){
   },function(e){ if(e.acceso) accesoRechazado(e); return false; });
 }
 function cerrarSesion(){
-  sesion = null; lsSet(STORE_USER,"null"); state.view="inicio"; state.editando=null; state.acc.msg=null; render(); window.scrollTo(0,0);
+  sesion = null; lsSet(STORE_USER,"null"); state.view="inicio"; state.editando=null; state.acc.msg=null; navReiniciar(); render(); window.scrollTo(0,0);
 }
 
 function aplicarCfgRemota(j){
@@ -1920,7 +1925,7 @@ function subirLiberacion(){
 }
 /* tras guardar una liberación nueva: limpia el formulario y vuelve a Inicio con un aviso (cls "ok" verde, "aviso" ámbar) */
 function terminarRegistro(msg,cls){
-  resetForm(); state.view="inicio"; state.flash=msg; state.flashCls=cls;
+  resetForm(); nav.omitir = true; state.view="inicio"; state.flash=msg; state.flashCls=cls;
   render(); window.scrollTo(0,0);
 }
 function subirConfirmada(texto,sig,sel,uid){
@@ -1971,7 +1976,7 @@ function updateOutput(){
 }
 
 /* ── turno día / noche ── */
-var APP_VERSION = "2.3.0-beta1";
+var APP_VERSION = "2.4.0-beta1";
 var SVG_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>';
 var SVG_LUNA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
 /* Turno y día de trabajo: se detectan solos con la hora de Lima (ver turno.js):
@@ -2136,6 +2141,74 @@ function avisoFlash(app){
   app.appendChild(noteBox([state.flash],state.flashCls==="aviso"?"":(state.flashCls||"ok")));   // "aviso" = ámbar; por defecto verde
   state.flash=""; state.flashCls="";
 }
+/* ── historial de pantallas: botones «‹ Atrás» y «Adelante ›» entre la cabecera y el contenido ──
+   Se arma solo a partir de la pantalla que muestra render(), sin tocar cada botón de la app.
+   Los frentes/líneas/material de Ajustes cuentan como «Ajustes»; editar una liberación no se puede volver a abrir con Adelante. */
+var nav = {atras:[], adelante:[], actual:null, omitir:false};
+function claveNav(){
+  var v = state.view;
+  if(v==="frente"||v==="lineas"||v==="material") return "config";
+  if(v==="main" && state.editando) return "edicion";
+  return v;
+}
+function navPermitido(k){
+  if(k==="perfil") return !!(usaServidor() && activo() && sesion);
+  if(k==="usuarios") return !!(usaServidor() && activo() && sesion && sesion.rol==="admin");
+  return true;
+}
+function navHay(pila){
+  for(var i=0;i<pila.length;i++) if(navPermitido(pila[i])) return true;
+  return false;
+}
+/* anota la pantalla actual en el historial cuando cambió por una acción normal de la app */
+function navRegistrar(){
+  var k = claveNav();
+  if(nav.actual===null){ nav.actual = k; return; }
+  if(k===nav.actual) return;
+  var consumida = nav.omitir || nav.actual==="edicion"; nav.omitir = false;   // el registro recién subido o la edición terminada: ya no hay a qué volver
+  if(consumida){ if(nav.atras.length && nav.atras[nav.atras.length-1]===k) nav.atras.pop(); }   // volvió a donde estaba: no se duplica
+  else nav.atras.push(nav.actual);
+  if(nav.atras.length>30) nav.atras.shift();
+  nav.adelante = []; nav.actual = k;
+}
+function navReiniciar(){ nav.atras = []; nav.adelante = []; nav.actual = null; nav.omitir = false; }
+/* antes de salir de una pantalla con trabajo a medias (Ajustes sin guardar o una edición) se pregunta */
+function navPuedeSalir(){
+  if(ed && (ed.dirty || ed.frDirty || ed.matDirty)){
+    if(!confirm("Hay cambios sin guardar. ¿Descartarlos?")) return false;
+  } else if(state.editando){
+    if(!confirm("Estás editando una liberación. Si sales, se descartan los cambios. ¿Salir?")) return false;
+  }
+  ed = null;
+  if(state.editando){ state.editando = null; resetForm(); }
+  return true;
+}
+function navIr(k){
+  if(k==="hoy"){ state.view = "hoy"; cargarRango(); }
+  else if(k==="config") abrirConfig();
+  else if(k==="perfil") abrirPerfil();
+  else if(k==="usuarios") abrirUsuarios();
+  else { state.view = (k==="main")?"main":"inicio"; render(); }
+  window.scrollTo(0,0);
+}
+function navMover(dir){
+  var pila = dir<0 ? nav.atras : nav.adelante, otra = dir<0 ? nav.adelante : nav.atras;
+  while(pila.length && !navPermitido(pila[pila.length-1])) pila.pop();   // pantallas a las que ya no se tiene acceso
+  if(!pila.length){ render(); return; }
+  if(!navPuedeSalir()) return;
+  var k = pila.pop();
+  if(nav.actual && nav.actual!=="edicion") otra.push(nav.actual);
+  nav.actual = k;
+  navIr(k);
+}
+function navBarra(){
+  var a = el("button",{class:"navbtn",id:"navAtras",type:"button","aria-label":"Pantalla anterior",title:"Pantalla anterior",disabled:!navHay(nav.atras)},["‹ Atrás"]);
+  var d = el("button",{class:"navbtn",id:"navAdelante",type:"button","aria-label":"Pantalla siguiente",title:"Pantalla siguiente",disabled:!navHay(nav.adelante)},["Adelante ›"]);
+  a.addEventListener("click",function(){ navMover(-1); });
+  d.addEventListener("click",function(){ navMover(1); });
+  return el("div",{class:"navrow"},[a,d]);
+}
+
 /* ── navegación entre las pantallas principales ── */
 function irInicio(){
   if(state.editando){ state.editando=null; resetForm(); }   // salir de una edición la descarta
@@ -4067,6 +4140,12 @@ function render(){
   else if(state.view==="perfil") renderPerfil(app);
   else if(state.view==="usuarios") renderUsuarios(app);
   else { lastVisibleSig = visibleSignature(); renderMain(app); }
+
+  if(!necesitaAcceso()){   // botones Atrás / Adelante entre la cabecera y el contenido
+    navRegistrar();
+    var hdr = app.querySelector(".hdr");
+    if(hdr && hdr.parentNode===app) app.insertBefore(navBarra(),hdr.nextSibling);
+  }
 
   if(keepId){
     var back = document.querySelector('[data-fk="'+keepId+'"]');
