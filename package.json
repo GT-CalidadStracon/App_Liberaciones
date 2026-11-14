@@ -1,0 +1,14 @@
+{
+  "name": "app-liberaciones-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pruebas automáticas del generador de liberaciones CQC (PWA de un solo archivo); ver tests/README.md",
+  "scripts": {
+    "test": "node --test --test-timeout=90000 \"tests/*.test.js\" \"tests/backend/*.test.js\""
+  },
+  "devDependencies": {
+    "acorn": "^8.19.0",
+    "fake-indexeddb": "^6.2.8",
+    "jsdom": "^31.0.1"
+  }
+}
