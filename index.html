@@ -1976,7 +1976,7 @@ function updateOutput(){
 }
 
 /* ── turno día / noche ── */
-var APP_VERSION = "2.4.0-beta1";
+var APP_VERSION = "2.4.1-beta1";
 var SVG_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>';
 var SVG_LUNA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
 /* Turno y día de trabajo: se detectan solos con la hora de Lima (ver turno.js):
@@ -3234,8 +3234,7 @@ function secCard(title,desc,children){
 function renderConfig(app){
   var C = ed.cfg;
   app.appendChild(el("div",{class:"hdr"},[
-    el("div",null,[el("div",{class:"k"},["CONFIGURACIÓN"]),el("div",{class:"t"},["Ajustes del generador"])]),
-    el("button",{class:"hbtn",type:"button",onclick:salirConfig},["← Volver"])
+    el("div",null,[el("div",{class:"k"},["CONFIGURACIÓN"]),el("div",{class:"t"},["Ajustes del generador"])])
   ]));
   if(!storageOk) app.appendChild(noteBox(["Este navegador no permite guardar datos: los cambios durarán solo hasta cerrar la app. Respáldalos con “Copiar configuración”."],""));
   if(ed.msg) app.appendChild(noteBox(ed.msg,ed.msgKind));
@@ -3474,8 +3473,7 @@ function bloqueCodigo(){
 function renderPerfil(app){
   var A = state.acc;
   app.appendChild(el("div",{class:"hdr"},[
-    el("div",null,[el("div",{class:"k"},["MI CUENTA"]),el("div",{class:"t"},["Mi perfil"])]),
-    el("button",{class:"hbtn",type:"button",onclick:function(){ A.msg=null; state.view="inicio"; render(); window.scrollTo(0,0); }},["← Volver"])
+    el("div",null,[el("div",{class:"k"},["MI CUENTA"]),el("div",{class:"t"},["Mi perfil"])])
   ]));
   if(A.msg) app.appendChild(noteBox([A.msg.m],A.msg.t));
   var bG = el("button",{class:"b-pri",type:"button",disabled:A.ocupado},[A.ocupado?"Guardando…":"Guardar mis datos"]);

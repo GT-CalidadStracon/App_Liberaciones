@@ -401,3 +401,34 @@ test("Atrás/Adelante: no aparecen en la pantalla de ingreso y cerrar sesión bo
     assert.deepStrictEqual(app.json("nav.adelante"), []);
   } finally { app.cerrar(); }
 });
+
+test("Mi perfil y Ajustes del generador ya no tienen «← Volver»: se sale con Atrás o con el menú (los frentes de Ajustes sí lo conservan)", async () => {
+  const servidor = crearServidorMock();
+  servidor.usuarios[0].rol = "admin";
+  const app = await cargarApp({ servidor, usuario: servidor.usuarios[0], vista: "inicio" });
+  try {
+    const volver = () => app.botones(/Volver/).filter((b) => b.closest("#app .hdr"));
+    const abrirMenu = () => app.click(app.botones("⚙ Configuración ▾")[0]);
+    // Mi perfil
+    await abrirMenu(); await app.clickTexto("Mi perfil", app.document.querySelector(".menu"));
+    assert.strictEqual(app.get("state.view"), "perfil");
+    assert.match(app.document.querySelector("#app .hdr").textContent, /Mi perfil/, "sigue el título");
+    assert.strictEqual(volver().length, 0, "Mi perfil sin «← Volver»");
+    await app.click(navAtras(app));
+    assert.strictEqual(app.get("state.view"), "inicio", "Atrás saca de Mi perfil");
+    // Ajustes del generador
+    await abrirMenu(); await app.clickTexto("Ajustes del generador", app.document.querySelector(".menu"));
+    assert.strictEqual(app.get("state.view"), "config");
+    assert.match(app.document.querySelector("#app .hdr").textContent, /Ajustes del generador/);
+    assert.strictEqual(volver().length, 0, "Ajustes sin «← Volver»");
+    assert.ok(hayBoton(app, "Salir") && hayBoton(app, "Guardar para todos"), "la barra de abajo conserva Salir y Guardar");
+    await app.click(navAtras(app));
+    assert.strictEqual(app.get("state.view"), "inicio", "Atrás saca de Ajustes");
+    // dentro de Ajustes, el editor de un frente sigue teniendo su «← Volver» (vuelve a Ajustes, no sale)
+    await abrirMenu(); await app.clickTexto("Ajustes del generador", app.document.querySelector(".menu"));
+    app.run("editarFrente(0)"); await app.vaciar();
+    assert.strictEqual(app.get("state.view"), "frente");
+    assert.strictEqual(volver().length, 1, "el editor del frente conserva «← Volver»");
+    assert.deepStrictEqual(app.errores.map(String), []);
+  } finally { app.cerrar(); }
+});
