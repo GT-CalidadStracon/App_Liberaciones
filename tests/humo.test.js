@@ -14,7 +14,7 @@ test("contrato del arnés: existen las variables y funciones globales que las pr
 
 for (const idb of ["ausente", "presente", "bloqueado"]) {
   test(`carga sin errores y dibuja la pantalla principal (indexedDB ${idb})`, async () => {
-    const app = await cargarApp({ indexedDB: idb });
+    const app = await cargarApp({ indexedDB: idb, vista: "inicio" });
     try {
       assert.deepStrictEqual(app.errores.map((e) => String(e && e.cause ? e.cause.stack || e.cause : e)), [], "errores de JS al cargar");
       assert.deepStrictEqual(app.consola.error, [], "console.error durante la carga");
@@ -23,6 +23,10 @@ for (const idb of ["ausente", "presente", "bloqueado"]) {
       assert.ok(d.querySelector("#app .hdr"), "falta el encabezado");
       assert.match(d.querySelector("#app .hdr").textContent, /Generador de Liberación/);
       assert.ok(app.botones("⚙ Configuración ▾").length === 1, "falta el botón «Configuración»");
+      assert.strictEqual(app.json("state.view"), "inicio", "la app arranca en Inicio");
+      assert.ok(app.botones("＋ Registrar liberación").length === 1 && app.botones("Ver liberaciones anteriores").length === 1, "Inicio ofrece Registrar y Ver anteriores");
+      assert.match(d.getElementById("app").textContent, /no está conectado al sistema del equipo/, "sin conexión configurada se avisa en Inicio");
+      await app.clickTexto("＋ Registrar liberación");
       assert.strictEqual(app.json("state.view"), "main");
       const frentes = app.json("cfg.frentes");
       assert.strictEqual(frentes.length, 7, "la configuración de fábrica trae 7 frentes");
@@ -33,8 +37,6 @@ for (const idb of ["ausente", "presente", "bloqueado"]) {
       frentes.forEach((f) => assert.ok(app.botones(f.corto || f.nombre, d.querySelector("#app .card")).length >= 1, "falta el botón del frente " + f.id));
       assert.ok(d.getElementById("inCam") && d.getElementById("inGal"), "faltan las entradas de foto");
       assert.strictEqual(d.getElementById("outbox"), null, "no debe haber texto generado al inicio");
-      // sin conexión configurada se avisa
-      assert.match(d.getElementById("app").textContent, /no está conectado al sistema del equipo/);
     } finally { app.cerrar(); }
   });
 }
@@ -86,11 +88,11 @@ test("pantallas de ajustes (config, frente, líneas, material) y del día se dib
     for (let i = 0; i < m; i++) { app.run(`editarMaterial(${i})`); assert.strictEqual(app.json("state.view"), "material"); app.run("cancelarMaterial()"); }
     app.run("editarMaterial(-1)"); app.run("cancelarMaterial()");
     app.run("salirConfig()");
-    assert.strictEqual(app.json("state.view"), "main");
+    assert.strictEqual(app.json("state.view"), "inicio");
     app.run("abrirDia()");
     await app.vaciar();
     assert.strictEqual(app.json("state.view"), "hoy");
-    assert.ok(servidor.contarAcciones("listLibs") >= 1, "abrir el día debe pedir las liberaciones");
+    assert.ok(servidor.contarAcciones("listRango") >= 1, "abrir Liberaciones anteriores debe pedir las del rango");
     assert.deepStrictEqual(app.errores.map(String), []);
   } finally { app.cerrar(); }
 });

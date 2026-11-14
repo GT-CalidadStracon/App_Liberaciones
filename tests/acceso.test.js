@@ -21,7 +21,7 @@ const BETO = { nombre: "Beto Registro", usuario: "beto", codigo: "codigo-beto", 
 const OTRA = { nombre: "Otra Persona", usuario: "opersona", codigo: "codigo-otra", rol: "registro", estado: "ACTIVO" };
 const LUIS = { nombre: "Luis Admin", usuario: "luis", codigo: "codigo-luis", rol: "admin", estado: "ACTIVO" };
 
-/* sube una liberación completa desde el formulario y deja la pantalla de inicio (sin tipo) para ver "Últimas liberaciones" */
+/* sube una liberación completa desde el formulario; al terminar la app vuelve sola a Inicio, donde se ven las «Últimas liberaciones» */
 async function subirUna(app, semilla) {
   await app.elegirFrente("pad2f");
   await app.elegirTipo("FUNDACION");
@@ -175,13 +175,13 @@ test("roles: solo editor/admin ven la ✕ de borrar; quien solo registra no, y s
   servidor.guardados.push(
     { uid: "u1", fecha: "2026-11-13", turno: "DÍA", texto: "TIPO DE LIBERACIÓN: X\nESTRUCTURA: PAD 2F\nSUPERVISOR CQC: A", form: "", porId: "ana", porNombre: "Ana" },
     { uid: "u2", fecha: "2026-11-13", turno: "DÍA", texto: "TIPO DE LIBERACIÓN: Y\nESTRUCTURA: PAD 2F\nSUPERVISOR CQC: A", form: "", porId: "beto", porNombre: "Beto Registro" });
-  const editor = await cargarApp({ servidor });
+  const editor = await cargarApp({ servidor, vista: "inicio" });
   try {
     await editor.run("cargarRecientes(true)"); await editor.vaciar();
     assert.ok(editor.document.querySelectorAll("button.borrar").length >= 2, "el editor ve ✕ en todas");
     assert.ok(editor.document.querySelectorAll("button.edit").length >= 2, "el editor edita todas");
   } finally { editor.cerrar(); }
-  const registro = await cargarApp({ servidor, usuario: BETO });
+  const registro = await cargarApp({ servidor, usuario: BETO, vista: "inicio" });
   try {
     await registro.run("cargarRecientes(true)"); await registro.vaciar();
     assert.strictEqual(registro.get("esEditor()"), false);
@@ -220,7 +220,7 @@ test("si el código ya no vale (lo cambiaron) pide ingresar de nuevo con aviso",
 });
 
 // ── Mi perfil ────────────────────────────────────────────────────
-test("Menú «Configuración»: ofrece Mi perfil y Ajustes del generador; Ajustes muestra quién y cuándo cambió la configuración (sin versiones)", async () => {
+test("Menú «Configuración»: ofrece Inicio, Mi perfil y Ajustes del generador; Ajustes muestra quién y cuándo cambió la configuración (sin versiones)", async () => {
   const servidor = crearServidorMock();
   servidor.usuarios[0].rol = "admin";
   const app = await cargarApp({ servidor, usuario: servidor.usuarios[0] });
@@ -234,7 +234,7 @@ test("Menú «Configuración»: ofrece Mi perfil y Ajustes del generador; Ajuste
     assert.strictEqual(btn.getAttribute("aria-expanded"), "false");
     await app.click(btn);
     assert.strictEqual(btn.getAttribute("aria-expanded"), "true");
-    assert.deepStrictEqual(Array.from(app.document.querySelectorAll(".menu [role=menuitem]")).map((x) => x.textContent), ["Mi perfil", "Ajustes del generador", "Cerrar sesión"]);
+    assert.deepStrictEqual(Array.from(app.document.querySelectorAll(".menu [role=menuitem]")).map((x) => x.textContent), ["Inicio", "Mi perfil", "Ajustes del generador", "Cerrar sesión"]);
     // se cierra con Escape y al tocar fuera
     app.document.dispatchEvent(new app.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     assert.strictEqual(app.document.querySelector(".menu"), null);
@@ -389,7 +389,8 @@ test("editar: se puede cambiar el turno y el día, cancelar sin guardar, y un er
     await app.clickTexto("Cancelar edición");
     assert.strictEqual(app.get("state.editando"), null);
     assert.strictEqual(servidor.ediciones.length, 1);
-    assert.ok(hayBoton(app, "PAD 2F"));
+    assert.strictEqual(app.get("state.view"), "inicio", "cancelar vuelve a donde se pulsó ✎ (Inicio)");
+    assert.ok(hayBoton(app, "＋ Registrar liberación"));
   } finally { app.cerrar(); }
 });
 

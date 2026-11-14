@@ -190,6 +190,11 @@ function crearServidorMock(opciones) {
         }) });
         case "ultimasLibs": return responder({ ok: true, items: s.guardados.slice(-(body.n || 3)).reverse().map(itemDe) });
         case "searchLibs": return responder({ ok: true, items: [] });
+        case "listRango": {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(body.desde || "") || !/^\d{4}-\d{2}-\d{2}$/.test(body.hasta || "")) return responder({ ok: false, error: "Fechas inválidas (use aaaa-mm-dd)." });
+          const items = s.guardados.filter((g) => g.fecha >= body.desde && g.fecha <= body.hasta).map(itemDe);
+          return responder({ ok: true, items, total: items.length, truncado: false, desde: body.desde, hasta: body.hasta, hoja: "https://docs.google.com/spreadsheets/d/prueba" });
+        }
         case "editLib": {
           const g = s.guardados.find((x) => idLib(x) === body.id);
           if (!g) return responder({ ok: false, error: "Esa liberación ya no existe (alguien la borró)." });
@@ -283,6 +288,7 @@ const GLOBALES_CONTRATO = {
  *   hash           "#conectar=..." u otro hash inicial
  *   semilla        semilla de Math.random de la página (determinismo de newId)
  *   confirmar      valor que devuelve window.confirm (true por defecto)
+ *   vista          "inicio" deja la pantalla de arranque; por defecto se abre el registro ("main") para ejercitar el formulario
  */
 async function cargarApp(opciones) {
   const op = Object.assign({ indexedDB: "ausente", semilla: 12345, confirmar: true }, opciones || {});
@@ -368,6 +374,9 @@ async function cargarApp(opciones) {
   const { document } = window;
   await new Promise((res) => { if (document.readyState === "complete") res(); else window.addEventListener("load", () => res()); });
   await reloj.vaciar();
+  // La app arranca en «Inicio». Casi todas las pruebas ejercitan el formulario, así que por defecto se abre el registro;
+  // las que prueban el arranque piden vista: "inicio".
+  if (op.vista !== "inicio") window.eval('state.view = "main"; render();');
 
   const app = {
     window, document, reloj, servidor, persistencia, ls, errores, avisos, consola, alertas, confirmaciones, rng,
@@ -413,7 +422,8 @@ async function cargarApp(opciones) {
       await app.clickTexto(corto, document.querySelector("#app .card"));
     },
     /** Nueva liberación en el mismo frente/tipo (equivale a resetForm + render). */
-    nuevaLiberacion() { window.eval("resetForm(); render();"); },
+    /** Empieza otra liberación: formulario limpio en la pantalla de registro (tras subir, la app vuelve a Inicio). */
+    nuevaLiberacion() { window.eval('resetForm(); state.view = "main"; render();'); },
     /** Dispara un evento del window (p.ej. "online"). */
     async disparar(tipo) { window.dispatchEvent(new window.Event(tipo)); await reloj.vaciar(); },
     /** Pulsa "Subir liberación"/"Reintentar" y, si aparece, confirma el cuadro de turno ("Sí, registrar"). */

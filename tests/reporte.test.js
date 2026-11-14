@@ -21,6 +21,7 @@ const PLAN = [
 async function subirPlan(app, plan, conFoto) {
   const textos = [];
   for (const [fr, tp, sem] of plan) {
+    await app.run("abrirRegistro()"); await app.vaciar();   // tras subir, la app vuelve a Inicio
     await app.elegirFrente(fr);
     if (app.json("state.tipo") !== tp) await app.elegirTipo(tp);
     app.run("prefs.supervisor = ''; resetForm(); render();");

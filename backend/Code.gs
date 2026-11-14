@@ -6,7 +6,7 @@
  *
  * Sin sesión:  ping, registrar (con la clave de invitación), login (usuario + código).
  * Cualquier usuario activo (rol registro): getConfig, addLib, listLibs, listLibsDia, ultimasLibs, searchLibs,
- *           cambiarCodigo, actualizarPerfil y editLib (solo sus propias liberaciones).
+ *           listRango (rango de fechas + texto), cambiarCodigo, actualizarPerfil y editLib (solo sus propias liberaciones).
  * Rol editor: además editLib de cualquiera, delLib y saveConfig.
  * Rol admin: además listUsuarios, setUsuario (rol / baja), delUsuario y resetCodigo.
  * Mantenimiento (ejecutar a mano desde el editor): instalar, iniciar,
@@ -21,7 +21,7 @@
  * Ver README.md.
  */
 
-var VERSION_SERVIDOR = '2.2.0';
+var VERSION_SERVIDOR = '2.3.0';
 var TZ = 'America/Lima';                  // UTC-5 fijo, sin horario de verano
 var OFFSET_MS = 5 * 3600 * 1000;
 var HOJA_LIB = 'Liberaciones';
@@ -34,6 +34,7 @@ var MAX_FOTO_B64 = 4 * 1024 * 1024;       // 4 MB de base64
 var MAX_TEXTO = 20000;
 var MAX_CELDA = 49000;                    // Google Sheets admite 50 000 por celda
 var MAX_DIF_DIAS = 400;
+var MAX_RANGO = 1000;                     // liberaciones que devuelve listRango de una vez
 var TOLERANCIA_FUTURO_MS = 5 * 60 * 1000;
 var USU_MAX_FALLOS = 5;                   // códigos errados seguidos (por nombre) antes de bloquear
 var INV_MAX_FALLOS = 20;                  // claves de invitación erradas antes de bloquear los registros
@@ -118,6 +119,7 @@ var ACCIONES = {
   listLibsDia: accionListLibs_,     // alias: el día de trabajo con ambos turnos
   ultimasLibs: accionUltimasLibs_,
   searchLibs: accionSearchLibs_,
+  listRango: accionListRango_,
   editLib: accionEditLib_,
   delLib: accionDelLib_
 };
@@ -1053,6 +1055,29 @@ function accionSearchLibs_(b, usuario) {
     if (palabras.every(function (w) { return t.indexOf(w) >= 0; })) { out.push(aItem_(todas[i], usuario)); }
   }
   return { ok: true, items: out };
+}
+
+// listRango {desde, hasta, q?}: liberaciones cuyo día de trabajo (FECHA TURNO) está entre "desde" y "hasta"
+// (ambas incluidas, aaaa-mm-dd). "q" (opcional): todas las palabras deben aparecer en el texto o el ID (sin tildes
+// ni mayúsculas). Orden: el de la hoja (la más vieja primero). Si hay más de MAX_RANGO, devuelve las más nuevas y
+// marca truncado:true. Es lo que usan «Liberaciones anteriores» y la exportación a Excel.
+function accionListRango_(b, usuario) {
+  var desde = typeof b.desde === 'string' && fechaReal_(b.desde) ? b.desde : '';
+  var hasta = typeof b.hasta === 'string' && fechaReal_(b.hasta) ? b.hasta : '';
+  if (!desde || !hasta) { fallar_('Fechas inválidas (use aaaa-mm-dd).'); }
+  if (desde > hasta) { fallar_('La fecha "desde" no puede ser posterior a "hasta".'); }
+  var palabras = clave_(b.q).split(' ').filter(function (w) { return w; });
+  var L = hojaLib_();
+  var items = leerFilas_(L, 2).filter(function (o) {
+    if (o.fechaTurno < desde || o.fechaTurno > hasta) { return false; }
+    if (!palabras.length) { return true; }
+    var t = clave_(o.texto + ' ' + o.id);
+    return palabras.every(function (w) { return t.indexOf(w) >= 0; });
+  });
+  var total = items.length, truncado = total > MAX_RANGO;
+  if (truncado) { items = items.slice(total - MAX_RANGO); }
+  return { ok: true, items: items.map(function (o) { return aItem_(o, usuario); }),
+           total: total, truncado: truncado, desde: desde, hasta: hasta, hoja: L.ss.getUrl() };
 }
 
 // editLib {id, texto, campos?, form?, turno?, fecha?, foto?, nombreFoto?, quitarFoto?}: corrige una liberación.

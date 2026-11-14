@@ -23,6 +23,15 @@ Pensado para alguien del área de Calidad, sin conocimientos de programación. C
 - Mirar la hoja **Log**: si hay muchas líneas de error repetidas, avisar a quien mantiene el código.
 - Revisar la hoja *Liberaciones*: la columna **AJUSTE MANUAL = SÍ** marca los registros donde alguien cambió el turno/día a mano. Si hay muchos, recordar la regla al equipo.
 
+## 3a. Pantallas de la app (2.3)
+- **Inicio** (al abrir la app): botón **＋ Registrar liberación**, botón **Ver liberaciones anteriores** y las **3 últimas** liberaciones (con copiar, editar ✎ y borrar ✕ según el rol).
+- **Registrar liberación:** empieza por **fecha y turno**; al subir (o al guardarse en el celular si no hay señal) la app **vuelve a Inicio** con un aviso. Para repetir una parecida se usa el ícono de copiar de las últimas.
+- **Liberaciones anteriores:** filtro de **fechas «Desde / Hasta»** (día de trabajo; al abrir trae los últimos 7 días, hoy incluido) y filtro de **texto** (todas las palabras, sin tildes ni mayúsculas; filtra lo ya cargado, sin volver al servidor).
+  - **⬇ Exportar a Excel:** baja un listado `.xlsx` con **lo que se ve** (rango + filtro de texto), una fila por liberación: ID, fecha del día de trabajo, hora, turno, estructura, tipo, material, capa, espesor, área, cota, progresiva, procedencia, ensayo, protocolo, supervisor, texto completo, enlace a la foto y quién la registró. No incluye las fotos. Archivo: `Liberaciones_aaaa-mm-dd_a_aaaa-mm-dd.xlsx` (`_filtro` si hay texto).
+  - Si el rango es **un solo día** (mismas fechas en Desde y Hasta) aparecen además los botones del **reporte del día** (completo, solo día, solo noche), como siempre.
+  - El servidor devuelve como máximo 1000 liberaciones por consulta (las más recientes); si hay más, la app avisa y hay que acortar el rango.
+- **Servidor 2.3.0:** agrega la acción `listRango` (rango de fechas). Hay que **pegar el `Code.gs` nuevo y publicar una nueva versión del despliegue**; con el servidor anterior, Liberaciones anteriores avisa que hay que actualizarlo (lo demás sigue funcionando).
+
 ## 3b. Personas con acceso — todo se hace desde la app
 Cada persona **se registra sola** (nombre completo, un **usuario** para ingresar, un código propio de 6 o más caracteres y la **clave de invitación**). Si la clave es correcta queda **ACTIVA de inmediato con rol «Registro»**. No hace falta aprobarla.
 
@@ -34,9 +43,9 @@ Cada persona **se registra sola** (nombre completo, un **usuario** para ingresar
 | **Editor** | Sí | Todas | Sí | No |
 | **Admin** | Sí | Todas | Sí | Sí |
 
-- **Mi perfil** (botón **⚙ Configuración ▾** arriba → *Mi perfil*): cambiar nombre completo, usuario y código y ver el rol. Ese mismo menú tiene *Ajustes del generador* y *Cerrar sesión*.
+- **Mi perfil** (botón **⚙ Configuración ▾** arriba → *Mi perfil*): cambiar nombre completo, usuario y código y ver el rol. Ese mismo menú tiene *Inicio* (primera opción), *Ajustes del generador* y *Cerrar sesión*.
 - **Administrar usuarios** (solo admin: Mi perfil → *Gestionar usuarios*): cambiar el rol, **dar de baja / reactivar**, **restablecer el código** (genera un código temporal que se entrega a la persona; al ingresar debe elegir uno propio) y **borrar** la cuenta (sus liberaciones se conservan). Un admin no puede cambiarse el rol, darse de baja ni borrarse a sí mismo, y siempre queda al menos un admin.
-- **Editar una liberación:** botón ✎ en «Últimas liberaciones» y en la lista del día. Se abre el formulario con sus datos; al guardar conserva el mismo ID. En la hoja *Liberaciones* quedan anotados *EDITADO POR* y *EDITADO EN*. Para editar hace falta señal.
+- **Editar una liberación:** botón ✎ en «Últimas liberaciones» (Inicio) y en *Liberaciones anteriores*. Se abre el formulario con sus datos; al guardar conserva el mismo ID. En la hoja *Liberaciones* quedan anotados *EDITADO POR* y *EDITADO EN*. Para editar hace falta señal.
 - **Primer admin (tú):** regístrate como cualquiera y, **solo esta vez**, cambia en la hoja *Usuarios* tu **ROL** a `admin`. Desde ahí todo lo demás se hace en la app.
 - **Quién entra:** quien tenga la clave de invitación puede darse de alta (máximo 20 altas por hora). Por eso la clave se comparte solo con el equipo y se cambia si se filtra (Propiedades del script → `EQUIPO_KEY`; las personas ya registradas no se ven afectadas). La columna *REGISTRADO POR* de *Liberaciones* permite ver quién subió qué.
 - **Si prefieres aprobar cada alta:** poner la propiedad `APROBAR_REGISTROS` = `SI`; las personas quedan **PENDIENTES** hasta que un admin las apruebe en *Gestionar usuarios*.

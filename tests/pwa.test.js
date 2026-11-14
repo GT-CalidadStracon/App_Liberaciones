@@ -40,7 +40,9 @@ test("todo archivo local que usa la página existe y está en la lista de caché
   vm.runInContext(leer("sw.js"), ctx);
   const archivos = Array.from(ctx.ARCHIVOS).map((a) => a.replace(/^\.\//, ""));
   assert.ok(archivos.length >= 3, "no se pudo leer ARCHIVOS de sw.js");
-  archivos.forEach((a) => assert.ok(fs.existsSync(path.join(RAIZ, a)), `sw.js lista «${a}» pero el archivo no existe`));
+  // los logos son opcionales (el repo público no los trae): la página los oculta si faltan y el service worker los guarda solo si existen
+  const opcionales = new Set(Array.from(ctx.OPCIONALES || []).map((a) => a.replace(/^\.\//, "")));
+  archivos.forEach((a) => assert.ok(opcionales.has(a) || fs.existsSync(path.join(RAIZ, a)), `sw.js lista «${a}» pero el archivo no existe`));
   // lo que la página pide por etiquetas
   const usados = new Set();
   let m;
@@ -50,7 +52,7 @@ test("todo archivo local que usa la página existe y está en la lista de caché
   [/["'](logo-[a-z]+\.(?:png|jpg))["']/g, /["'](exceljs[\w.-]*\.js)["']/g].forEach((re) => { while ((m = re.exec(html))) usados.add(m[1]); });
   assert.ok(usados.has("turno.js"), "index.html debería cargar turno.js (¿cambió la estructura?)");
   usados.forEach((u) => {
-    assert.ok(fs.existsSync(path.join(RAIZ, u)), `index.html usa «${u}» pero no existe en el repo`);
+    assert.ok(opcionales.has(u) || fs.existsSync(path.join(RAIZ, u)), `index.html usa «${u}» pero no existe en el repo`);
     assert.ok(archivos.includes(u), `index.html usa «${u}» y NO está en ARCHIVOS de sw.js: sin señal la app no cargaría (agrégalo y sube la versión del caché)`);
   });
   assert.ok(archivos.includes("index.html") && archivos.includes("manifest.webmanifest"));

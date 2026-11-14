@@ -10,6 +10,7 @@ const { cargarApp, crearServidorMock, crearRng } = require("./helpers/cargarApp"
 const { llenarFormulario } = require("./helpers/llenar");
 
 async function prepararLiberacion(app, frente, tipo, semilla) {
+  await app.run("abrirRegistro()"); await app.vaciar();   // tras subir, la app vuelve a Inicio
   await app.elegirFrente(frente || "pad2f");
   if (app.json("state.tipo") !== (tipo || "FUNDACION")) await app.elegirTipo(tipo || "FUNDACION");
   app.run("prefs.supervisor = ''; resetForm(); render();");
@@ -46,8 +47,9 @@ test("camino feliz: sube una vez, no queda nada en la cola y llega con todos los
     assert.strictEqual(form.tipo, "FUNDACION");
     assert.strictEqual(app.cola.length, 0);
     assert.deepStrictEqual(app.colaGuardada() || [], []);
-    assert.match(botonSubir(app).textContent, /Subida/);
-    assert.ok(botonSubir(app).disabled, "no se puede subir dos veces la misma liberación");
+    assert.strictEqual(app.get("state.view"), "inicio", "al subir, la app vuelve a Inicio");
+    assert.match(textoNota(app), /Registrada como L-0001/, "avisa en Inicio");
+    assert.ok(!app.document.getElementById("outbox"), "el formulario se cerró: no se puede subir dos veces lo mismo");
     assert.deepStrictEqual(app.errores.map(String), []);
   } finally { app.cerrar(); }
 });
@@ -62,9 +64,9 @@ test("sin señal: queda en cola (persistida) y al volver la señal se reenvía c
     const uid = app.json("cola[0].uid");
     assert.strictEqual(app.json("cola[0].texto"), texto);
     assert.deepStrictEqual(app.colaGuardada().map((i) => i.uid), [uid], "la cola debe estar en localStorage");
-    assert.match(botonSubir(app).textContent, /En cola/);
+    assert.strictEqual(app.get("state.view"), "inicio", "sin señal también vuelve a Inicio");
     assert.match(textoNota(app), /espera señal/);
-    assert.match(textoStat(app), /Sin señal: se guardó en el celular/);
+    assert.match(textoNota(app), /Sin señal: se guardó en el celular/);
 
     servidor.modo = "ok";
     await app.disparar("online");

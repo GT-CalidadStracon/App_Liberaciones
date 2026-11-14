@@ -73,6 +73,7 @@ test("con la app abierta, el turno cambia solo a las 19:00 y a las 07:00 (y la f
 });
 
 async function liberacionLista(app) {
+  await app.run("abrirRegistro()"); await app.vaciar();   // tras subir, la app vuelve a Inicio
   await app.elegirFrente("pad2f"); await app.elegirTipo("FUNDACION");
   app.run("prefs.supervisor = ''; resetForm(); render();");
   return (await llenarFormulario(app, { rng: crearRng(11), revisiones: 0 })).texto;
@@ -140,6 +141,7 @@ test("cambio manual de turno: sube con lo elegido, marca ajuste manual y a las 2
     assert.strictEqual(g.ajusteManual, true);
     // vigencia del ajuste manual: 2 h
     await app.avanzar(2 * 3600000 + 60000);
+    await app.run("abrirRegistro()"); await app.vaciar();
     await app.elegirFrente("pad2e");     // cualquier redibujado
     assert.strictEqual(txtTurno(app), "Turno día", "pasadas 2 h el turno vuelve a ser el automático");
   } finally { app.cerrar(); }
